@@ -45,6 +45,29 @@ and the icons of a subject live in that subject's repo
   (exactly that release). Use the major normally; pin an exact one to stop
   updates.
 
+### Encrypted index (sites that name no book)
+
+A subject site can keep even its title and its book list encrypted. Its
+repo then holds only `index.html` (the loader below), `boot.json`,
+`index.enc`, `r.html`, `q.html`, the sign-in theme and a flat pool of
+`xx/<id>.bin` files; nothing in it says what the subject or the books are.
+The item UI's `tools/site/build_pool.py` writes it (see that repo).
+
+`boot.json` replaces `subject.json` and holds only what the page needs
+before anyone has signed in:
+
+```json
+{ "templateTag": "3.4.0", "uiVersion": "2",
+  "theme": { "css": ".theme/gate.css", "icon": ".theme/icon.svg" } }
+```
+
+When `boot.json` exists the hub shows the sign-in screen with the neutral
+title "Books", and only after sign-in decrypts `index.enc` with the subject
+key: the title, `bookDetails`, and each book's id, title, views, cover and
+file map. A book opens as `r.html?b=<id>` (reader) or `q.html?b=<id>`
+(quiz). Without `boot.json` the hub reads `subject.json` and `books.json`
+as before, so an older site keeps working unchanged.
+
 The shell's `index.html` (it never changes) has this loader at the end of
 `<body>`; it adds the favicon and iOS icon itself through `js/hub.js`:
 
@@ -56,13 +79,15 @@ The shell's `index.html` (it never changes) has this loader at the end of
     var p = document.createElement("p"); p.textContent = text;
     document.body.appendChild(p);
   }
-  fetch("subject.json", { cache: "no-cache" }).then(function (r) {
-    if (!r.ok) { throw new Error("subject.json: HTTP " + r.status); }
+  fetch("boot.json", { cache: "no-cache" }).then(function (r) {
+    return r.ok ? r : fetch("subject.json", { cache: "no-cache" });
+  }).then(function (r) {
+    if (!r.ok) { throw new Error("boot.json: HTTP " + r.status); }
     return r.json();
   }).then(function (subject) {
     var v = String(subject.uiVersion || "");
     if (!/^[0-9]+(\.[0-9]+){0,2}$/.test(v)) {
-      throw new Error('subject.json needs "uiVersion" such as "1"');
+      throw new Error('boot.json needs "uiVersion" such as "2"');
     }
     var s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/gh/eckko/group-ui@" + v +

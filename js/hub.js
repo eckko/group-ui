@@ -35,6 +35,9 @@
 (function subjectSiteUi() {
   "use strict";
 
+  /* The subject's public settings, read once (see readSettings). */
+  var settingsPromise = null;
+
   /* The quiz template that provides sign-in, the gear and themes. */
   var QUIZ_TEMPLATE_TAG = "3.2.4";
   var JSDELIVR = "https://cdn.jsdelivr.net/gh/eckko/";
@@ -338,13 +341,45 @@
     }
 
     /**
+     * Where one of a book's own files is. On a site with encrypted names
+     * the index lists it; on an older site it sits in the book's folder.
+     * @param {object} book
+     * @param {string} path  for example "data/manifest.enc"
+     * @returns {string}
+     */
+    function fileAddress(book, path) {
+      if (book.files) {
+        if (!book.files[path]) {
+          throw new Error("not in the book's file list");
+        }
+        return book.files[path];
+      }
+      return encodeURIComponent(book.folder) + "/" + path;
+    }
+
+    /**
+     * The page that opens a book.
+     * @param {object} book
+     * @param {string} view  "read" or "quiz"
+     * @returns {string}
+     */
+    function bookAddress(book, view) {
+      if (book.files) {
+        return (view === "quiz" ? "q.html" : "r.html") + "?b=" +
+          encodeURIComponent(book.id);
+      }
+      return encodeURIComponent(book.folder) + "/index.html?view=" + view;
+    }
+
+    /**
      * Load a book's manifest (summary, counts, cover) and its cover, then
      * redraw. A failure just leaves the book as a typographic tile.
      * @param {object} book
      */
     function learnBook(book) {
-      var folder = encodeURIComponent(book.folder);
-      fetchPlain(folder + "/data/manifest.enc").then(function got(bytes) {
+      Promise.resolve().then(function first() {
+        return fetchPlain(fileAddress(book, "data/manifest.enc"));
+      }).then(function got(bytes) {
         var manifest = JSON.parse(new TextDecoder().decode(bytes));
         book.summary = (manifest.book && manifest.book.summary) || "";
         book.chapters = (manifest.chapters || []).length;
@@ -359,7 +394,8 @@
         if (!cover) {
           return null;
         }
-        return fetchPlain(folder + "/media/" + cover.replace(/\//g, "_") + ".enc")
+        return fetchPlain(fileAddress(book,
+          "media/" + cover.replace(/\//g, "_") + ".enc"))
           .then(function image(plain) {
             book.coverUrl = URL.createObjectURL(
               new Blob([plain], { type: sniff(plain) }));
@@ -384,7 +420,7 @@
       var has = (book.views || []).indexOf(view) !== -1;
       var action = make(has ? "a" : "span", "action" + (primary ? " primary" : ""), label);
       if (has) {
-        action.href = encodeURIComponent(book.folder) + "/index.html?view=" + view;
+        action.href = bookAddress(book, view);
         action.addEventListener("click", function remember() {
           try {
             localStorage.setItem(OPENED_KEY + book.id, String(Date.now()));
@@ -975,6 +1011,7 @@
       }
       books = (index.books || []).map(function prepare(book, number) {
         return Object.assign({
+          folder: book.id,               // names the book's status record
           short: book.title.split(":")[0],
           colour: TILE_COLOURS[number % TILE_COLOURS.length],
           answered: 0, lastTouched: 0, questions: 0, ideas: 0, chapters: 0,
@@ -986,6 +1023,7 @@
         subjectTitle: subject.title || "Books",
         workflowUrl: subject.admin && subject.admin.workflowUrl,
         onChange: function again() { draw(); },
+        bookLink: bookAddress,
       };
       status.hidden = true;
       shelf.hidden = false;
@@ -1011,14 +1049,33 @@
 
     addStyle(CDN + "css/theme-defaults.css");
     addStyle(CDN + "css/reading-panel.css");
-    var files = Promise.all([loadJson("subject.json"), loadJson("books.json")]);
-    files.catch(function ignore() { /* reported below */ });
-    loadJson("subject.json").then(function early(subject) {
-      if (subject.title) {
-        gateTitle.textContent = subject.title;
-        document.title = subject.title;
+    /* An older site names its title in the open; a site with encrypted
+       names shows only "Books" until the reader has signed in. */
+    readSettings().then(function early(found) {
+      if (!found.pool && found.subject.title) {
+        gateTitle.textContent = found.subject.title;
+        document.title = found.subject.title;
       }
-    }).catch(function ignore() { /* the title stays "Books" */ });
+    });
+    /**
+     * The subject and its book list, once the key is known.
+     * @returns {Promise<Array>} [subject settings, {books: [...]}]
+     */
+    function loadSite() {
+      return readSettings().then(function which(found) {
+        if (!found.pool) {
+          return Promise.all([loadJson("subject.json"), loadJson("books.json")]);
+        }
+        return fetchPlain("index.enc").then(function opened(bytes) {
+          var index = JSON.parse(new TextDecoder().decode(bytes));
+          if (index.format !== 2) {
+            throw new Error("this site needs a newer hub UI");
+          }
+          return [Object.assign({}, found.subject, index.subject),
+            { books: index.books }];
+        });
+      });
+    }
     /* The gear works on the sign-in screen too; Sign out only after. */
     var gearReady = setUpGear();
     gearReady.catch(function ignore() { /* reported below */ });
@@ -1029,7 +1086,7 @@
         status.textContent = "Loading your books…";
         gate.hidden = true;
         app.hidden = false;
-        return Promise.all([files, gearReady]);
+        return Promise.all([loadSite(), gearReady]);
       })
       .then(function show(done) {
         /* Only now is the gear built, so Sign out can be shown (a saved
@@ -1125,14 +1182,42 @@
   }
 
   /**
-   * Read subject.json early, for the theme.
-   * @returns {Promise<object>} subject.json, or {} when it cannot be read
+   * Read the subject's public settings: boot.json on a site whose books
+   * are all encrypted (the title and the books come later, from the
+   * encrypted index.enc), otherwise subject.json. The answer is read
+   * once and shared.
+   * @returns {Promise<{pool: boolean, subject: object}>} subject is {} when
+   *   neither file can be read
+   */
+  function readSettings() {
+    if (!settingsPromise) {
+      settingsPromise = fetch("boot.json", { cache: "no-cache" })
+        .then(function boot(reply) {
+          if (!reply.ok) { throw new Error("no boot.json"); }
+          return reply.json().then(function found(subject) {
+            return { pool: true, subject: subject };
+          });
+        }).catch(function older() {
+          return fetch("subject.json", { cache: "no-cache" })
+            .then(function ok(reply) {
+              return reply.ok ? reply.json() : {};
+            }).then(function legacy(subject) {
+              return { pool: false, subject: subject };
+            });
+        }).catch(function none() {
+          return { pool: false, subject: {} };
+        });
+    }
+    return settingsPromise;
+  }
+
+  /**
+   * Read the public settings early, for the theme.
+   * @returns {Promise<object>} the settings, or {} when they cannot be read
    */
   function readSubject() {
-    return fetch("subject.json", { cache: "no-cache" }).then(function ok(reply) {
-      return reply.ok ? reply.json() : {};
-    }).catch(function none() {
-      return {};
+    return readSettings().then(function only(found) {
+      return found.subject;
     });
   }
 
