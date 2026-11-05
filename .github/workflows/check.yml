@@ -1,0 +1,40 @@
+name: Check subject site template
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The files a subject shell loads exist
+        run: |
+          for f in js/hub.js js/status.js css/hub.css css/status.css img/icon.svg img/apple-touch-icon.png; do
+            test -s "$f" || { echo "::error::missing $f"; exit 1; }
+          done
+      - name: hub.js and status.js parse
+        run: |
+          node --check js/hub.js
+          node --check js/status.js
+      - name: status logic tests
+        run: node --test tests/status.test.js
+      - name: QUIZ_TEMPLATE_TAG is an exact tag
+        run: |
+          tag="$(sed -n 's/.*var QUIZ_TEMPLATE_TAG = "\([^"]*\)".*/\1/p' js/hub.js)"
+          if ! [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::QUIZ_TEMPLATE_TAG must be like 3.2.4 (no v, no branch), got '$tag'"
+            exit 1
+          fi
+      - name: No book data, keys or branch URLs
+        run: |
+          if grep -rEn '@(main|master|latest)/' js css; then
+            echo "::error::load code by an exact tag, never a branch"; exit 1
+          fi
+          if find . -path ./.git -prune -o -name '*.enc' -print | grep -q .; then
+            echo "::error::no book files belong here"; exit 1
+          fi

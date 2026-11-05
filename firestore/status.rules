@@ -1,0 +1,38 @@
+// Firestore rules for the admin book status page (group-ui 3.0.0).
+//
+// The Firebase project is shared with the quiz's progress sync, which already
+// has rules (item-ui: js/sync/providers/firebase-firestore.rules).
+// Firestore holds ONE rule set per project, so MERGE the `match` blocks and the
+// `isAdmin()` function below into the existing `match /databases/{database}/documents`
+// block in Firebase console > Firestore Database > Rules, then Publish.
+//
+// What they allow:
+//   admins/<uid>          a signed-in user can read only their OWN document
+//                         (that is how the page learns "I am an admin").
+//                         Nobody can write it; you create it by hand in the
+//                         console, once, with your user id (Authentication >
+//                         Users). An empty document is enough.
+//   bookStatus/<repo>     only an admin can read it. An admin can change ONLY
+//                         the `signoffs` field of an existing document (the
+//                         "Mark verified" button). The `auto` facts are written
+//                         by the book-pipeline workflow with a service account,
+//                         which bypasses these rules, so nothing in a browser
+//                         can create, delete or fake them.
+
+function isAdmin() {
+  return request.auth != null
+      && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+}
+
+match /admins/{userId} {
+  allow read: if request.auth != null && request.auth.uid == userId;
+  allow write: if false;
+}
+
+match /bookStatus/{repo} {
+  allow read: if isAdmin();
+  allow update: if isAdmin()
+                && request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['signoffs']);
+  allow create, delete: if false;
+}

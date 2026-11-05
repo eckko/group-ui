@@ -1,0 +1,141 @@
+/* The admin status band and page. Loaded by js/status.js for admins only.
+   Colours follow the reader's theme (--color-*), so dark themes work. */
+.st-band, .st-page {
+  --st-ok: var(--color-correct, #1e8a63);
+  --st-check: var(--color-partly, #b07a00);
+  --st-attn: var(--color-wrong, #c0392b);
+  --st-none: var(--color-border, #c9cedb);
+  --st-admin: var(--color-accent-2, #0f6b66);
+  --st-card: var(--color-card, #fbfcfd);
+  --st-text: var(--color-text, #121826);
+  --st-muted: var(--color-text-muted, #5b6578);
+  --st-line: var(--color-border, #d5dbe5);
+}
+.st-chip, .st-tag {
+  display: inline-block; padding: 1px .5rem; border-radius: .4rem; white-space: nowrap;
+  font-size: .78rem; font-weight: 600; line-height: 1.5;
+  color: var(--st-muted); background: var(--st-line);
+}
+.st-chip-ok { color: var(--st-ok); background: var(--st-card);
+  background: color-mix(in srgb, var(--st-ok) 16%, var(--st-card)); }
+.st-chip-check { color: var(--st-check);
+  background: color-mix(in srgb, var(--st-check) 18%, var(--st-card)); }
+.st-chip-attn { color: var(--st-attn); background: var(--st-card);
+  box-shadow: inset 0 0 0 1.5px var(--st-attn); }
+.st-chip-none { color: var(--st-muted);
+  background: color-mix(in srgb, var(--st-none) 45%, var(--st-card)); }
+.st-chip-admin { color: var(--st-admin); background: var(--st-card);
+  box-shadow: inset 0 0 0 1px var(--st-admin); border-radius: 999px; padding: 2px .7rem; }
+
+/* the two thin bars of one stage: Auto-checked on top, You verified below */
+.st-segs { flex: 1; min-width: 0; display: flex; gap: 4px; }
+.st-pair { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.st-seg { display: block; height: 5px; border-radius: 3px; }
+.st-seg.st-ok { background: var(--st-ok); }
+.st-seg.st-check, .st-seg.st-fail { background: var(--st-check); }
+.st-seg.st-stale { background: var(--st-attn); }
+.st-seg.st-fail { background: var(--st-attn); }
+.st-seg.st-none { background: var(--st-none); }
+
+/* the footer band under a card or list row */
+.st-band {
+  grid-column: 1 / -1; display: flex; flex-direction: column; gap: 2px;
+  padding: .25rem .6rem .5rem .75rem; color: var(--st-text);
+  border-top: 1px solid var(--st-line);
+  background: color-mix(in srgb, var(--st-admin) 9%, var(--st-card));
+  border-radius: 0 0 var(--radius, 1rem) var(--radius, 1rem);
+}
+.st-band-row { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem .6rem; min-width: 0; }
+.st-band, .st-band * { box-sizing: border-box; }
+.st-chip { flex: none; }
+.st-segs { min-width: 5rem; }
+.st-open { margin-left: auto; }
+/* in a (narrow) card: the chip and Status on the first line, the bars below */
+.book:not(.listrow) .st-segs { order: 3; flex: 1 1 100%; margin: .1rem 0 .25rem; }
+/* inside a book card the band is the footer; inside a list row (a flex row
+   with padding) it drops to its own line and runs edge to edge */
+.st-band { border-radius: 0; }
+.listrow.has-status { flex-wrap: wrap; }
+.listrow.has-status > .st-band { flex: 1 1 100%; margin: .25rem -.75rem -.75rem; padding-left: .75rem; }
+.st-counts { font-size: .78rem; color: var(--st-muted); }
+.st-open {
+  flex: none; white-space: nowrap; min-height: 44px; padding: 0 .6rem; border: 0; background: none;
+  font-family: inherit; font-size: .9rem; font-weight: 600; line-height: 1.2; color: var(--st-admin);
+  -webkit-appearance: none; appearance: none;
+}
+.st-dotbtn { width: 44px; height: 44px; border: 0; background: none; display: grid; place-items: center; }
+.st-dot { width: 14px; height: 14px; border-radius: 50%; padding: 0; box-shadow: none; }
+.st-dot.st-chip-ok { background: var(--st-ok); }
+.st-dot.st-chip-check { background: var(--st-check); }
+.st-dot.st-chip-attn { background: var(--st-attn); }
+.st-dot.st-chip-none { background: var(--st-none); }
+
+/* the full status page */
+.st-page {
+  position: fixed; inset: 0; z-index: 30; overflow-y: auto;
+  background: var(--color-page, #fbf8f1); color: var(--st-text);
+}
+.st-shell { max-width: 36rem; margin: 0 auto; padding: .5rem 1rem 3rem; display: flex; flex-direction: column; gap: .75rem; }
+.st-top { display: flex; justify-content: space-between; align-items: center; }
+.st-back { min-height: 44px; padding: 0 .25rem 0 0; border: 0; background: none; font-weight: 600; color: var(--color-accent, #2743d6); }
+.st-summary, .st-card, .st-pipe {
+  background: var(--st-card); border: 1px solid var(--st-line); border-radius: 1rem; padding: .9rem;
+}
+.st-summary { display: flex; flex-direction: column; gap: .9rem; }
+.st-who { display: flex; gap: .75rem; }
+.st-tile { width: 4.25rem; height: 6.25rem; flex: none; border-radius: .5rem; padding: .5rem; color: #fff; font: 700 .7rem/1.25 var(--font-heading, Georgia, serif); overflow: hidden; }
+.st-names { display: flex; flex-direction: column; gap: .35rem; align-items: flex-start; min-width: 0; }
+.st-names h1 { font-size: 1.25rem; }
+.st-repo { margin: 0; font-size: .8rem; color: var(--st-muted); overflow-wrap: anywhere; }
+.st-bars { display: flex; gap: 4px; }
+.st-bar { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.st-bar small { font-size: .7rem; color: var(--st-muted); }
+.st-bar small.st-attn-text { color: var(--st-attn); font-weight: 600; }
+.st-legend { margin: 0; font-size: .75rem; color: var(--st-muted); }
+.st-next { border-radius: .75rem; padding: .75rem; display: flex; flex-direction: column; gap: .25rem; }
+.st-next small { font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+.st-next-attn { color: var(--st-attn); background: color-mix(in srgb, var(--st-attn) 11%, var(--st-card)); }
+.st-next-check { color: var(--st-check); background: color-mix(in srgb, var(--st-check) 14%, var(--st-card)); }
+.st-next .st-btn { margin-top: .5rem; }
+.st-btn {
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
+  min-height: 44px; padding: 0 1rem; border-radius: .7rem; font-weight: 600; font-size: .9rem;
+  text-decoration: none; cursor: pointer; flex: 1;
+  color: var(--st-text); background: var(--st-card); border: 1px solid var(--st-text);
+}
+.st-btn.st-primary { color: var(--st-card); background: var(--st-text); }
+.st-btn:disabled { opacity: .6; }
+
+.st-card-attn { border-color: var(--st-attn); border-width: 1.5px; }
+.st-card-head { width: 100%; display: flex; align-items: center; gap: .6rem; padding: 0; border: 0; background: none; text-align: left; min-height: 3rem; color: inherit; }
+.st-num { width: 1.75rem; height: 1.75rem; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .85rem; color: var(--st-muted); background: var(--st-line); }
+.st-num-ok { color: var(--st-ok); background: color-mix(in srgb, var(--st-ok) 18%, var(--st-card)); }
+.st-num-attn { color: #fff; background: var(--st-attn); }
+.st-num-check { color: var(--st-check); background: color-mix(in srgb, var(--st-check) 20%, var(--st-card)); }
+.st-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .25rem; }
+.st-card-name { font: 700 1.05rem/1.2 var(--font-heading, Georgia, serif); }
+.st-tags { display: flex; flex-wrap: wrap; gap: .25rem; }
+.st-chev { color: var(--st-muted); font-size: 1.2rem; transition: transform .15s; }
+.st-chev.st-up { transform: rotate(180deg); }
+.st-card-body { display: flex; flex-direction: column; gap: .75rem; margin-top: .6rem; padding-top: .75rem; border-top: 1px solid var(--st-line); }
+.st-todo { border-radius: .6rem; padding: .6rem .75rem; font-size: .85rem; color: var(--st-attn); background: color-mix(in srgb, var(--st-attn) 11%, var(--st-card)); }
+.st-todo ol { margin: .35rem 0 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .2rem; }
+.st-sub { margin: 0; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--st-admin); }
+.st-fact { margin: 0; display: flex; gap: .5rem; padding: .3rem 0; font-size: .85rem; border-bottom: 1px solid var(--st-line); }
+.st-glyph { width: 1rem; flex: none; font-weight: 700; }
+.st-glyph.st-ok { color: var(--st-ok); } .st-glyph.st-attn { color: var(--st-attn); } .st-glyph.st-none { color: var(--st-muted); }
+.st-item { border-bottom: 1px solid var(--st-line); padding: .1rem 0; display: flex; align-items: center; gap: .25rem; }
+.st-item-top { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.st-item-names { display: flex; flex-direction: column; min-width: 0; font-size: .85rem; word-break: break-word; }
+.st-item-names small { color: var(--st-muted); font-size: .75rem; }
+.st-item-names { flex: 1; }
+.st-mini { min-height: 44px; min-width: 44px; padding: 0 .5rem; display: inline-flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 600; color: var(--st-text); text-decoration: underline; }
+.st-mark { width: 44px; height: 44px; flex: none; border-radius: 50%; border: 0; background: none; font-size: 1.25rem; font-weight: 700; cursor: pointer; }
+.st-mark-ok { color: var(--st-ok); } .st-mark-error { color: var(--st-attn); }
+.st-mark-ok.st-on { color: #fff; background: var(--st-ok); } .st-mark-error.st-on { color: #fff; background: var(--st-attn); }
+.st-mark:disabled { opacity: .5; }
+.st-acts { display: flex; gap: .5rem; }
+.st-pipe { display: flex; flex-direction: column; gap: .5rem; background: color-mix(in srgb, var(--st-admin) 9%, var(--st-card)); border-color: color-mix(in srgb, var(--st-admin) 35%, var(--st-line)); }
+.st-pipe small { font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--st-admin); }
+.st-pipe-row { margin: 0; display: flex; justify-content: space-between; font-size: .85rem; }
+.st-note { margin: 0; font-size: .75rem; color: var(--st-muted); }
