@@ -32,7 +32,7 @@ and the icons of a subject live in that subject's repo
 `subject.json` names the UI version:
 
 ```json
-{ "title": "Example", "templateTag": "3.2.4", "uiVersion": "2",
+{ "title": "Example", "templateTag": "3.2.4", "uiVersion": "3",
   "theme": { "css": ".theme/gate.css", "icon": ".theme/icon.svg",
              "appleTouchIcon": ".theme/apple-touch-icon.png" },
   "bookDetails": { "<book id>": { "authors": ["Name"], "edition": "2nd", "year": 2018 } } }
@@ -57,7 +57,7 @@ The item UI's `tools/site/build_pool.py` writes it (see that repo).
 before anyone has signed in:
 
 ```json
-{ "templateTag": "3.4.0", "uiVersion": "2",
+{ "templateTag": "3.4.0", "uiVersion": "3",
   "theme": { "css": ".theme/gate.css", "icon": ".theme/icon.svg" } }
 ```
 
@@ -239,3 +239,35 @@ other reader: nothing extra is downloaded for them.
 This is a **major** release because the hub now depends on Firestore rules and
 the pipeline workflow. A subject site adopts it by editing `uiVersion` to `"3"`.
 Run the logic tests with `node --test tests/status.test.js`.
+
+## Add a book (3.1.0, admin only)
+
+Admins see a dashed **Add a book** tile on the shelf (and in the gear menu).
+It takes a book name, a subject and EPUB, PDF or DOCX files, then:
+
+1. checks that no repo of that name exists (the repo name is made the same way
+   the pipeline makes it, tested against its shell code);
+2. starts the **Create book** workflow in the private pipeline repo with the
+   book name and subject, so the new repo gets exactly the properties that
+   workflow gives it (private, topics, key, settings);
+3. waits for that run to succeed, then uploads the files one by one to
+   `references/<slug>.<ext>` with the Contents API. The first file of each type
+   is named after the book; no file ever passes through a public repo or action.
+
+Setup, once, by the owner:
+
+- **Token.** A fine-grained GitHub token for your repos with Administration,
+  Contents, Actions (read and write) and Metadata (read). The admin pastes it in
+  the dialog; it is stored in Firestore at `adminSecrets/<uid>`, readable only
+  by that admin. Merge `firestore/status.rules` (it has the new `adminSecrets`
+  rule).
+- **Pipeline repo.** Defaults to `<owner>/book-pipeline`; set
+  `"admin": {"pipeline": "owner/name"}` in `subject.json`/`boot.json` for another.
+  Keep it **private**: workflow inputs (the book name) show in its runs.
+- **Subjects.** The chips come from repos with topic `subject`. The workflow's
+  own subject list is fixed, so a subject missing from it is refused.
+
+Books being built are kept in the same Firestore document and shown as
+"Not published yet" cards for the admin only until the book appears on the
+shelf. There is no undo. Backward compatible with 3.0.x: sites that are not in
+admin mode never load the new files. Tests: `node --test tests/addbook.test.js`.

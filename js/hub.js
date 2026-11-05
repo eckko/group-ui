@@ -632,6 +632,12 @@
       }
       return exactBase().then(function load(base) {
         addStyle(base + "css/status.css");
+        addStyle(base + "css/addbook.css");
+        /* "Add a book" is a second admin tool: the status page works even
+           when it cannot load. */
+        addScript(base + "js/addbook.js").then(function add() {
+          return window.SubjectAddBook.init(adminCtx, adminSetup);
+        }).then(draw).catch(function skip() { /* no Add book this time */ });
         return addScript(base + "js/status.js");
       }).then(function ready() {
         return window.SubjectStatus.init(adminCtx, adminSetup);
@@ -683,6 +689,20 @@
         "On: each book shows its build status." :
         "Off. Turn on to see each book's build status."));
 
+      var add = make("button", "admin-toggle", "Add a book");
+      add.type = "button";
+      add.addEventListener("click", function open() {
+        if (!(window.SubjectAddBook && window.SubjectAddBook.ready())) {
+          adminError = "Add a book is still loading. Try again in a moment.";
+          redraw();
+          return;
+        }
+        window.SubjectAddBook.open();
+      });
+      body.appendChild(add);
+      body.appendChild(make("p", "admin-note",
+        "Creates a private book repo from the template and uploads its files."));
+
       var clear = make("button", "admin-toggle admin-clear", "Clear cache and reload");
       clear.type = "button";
       clear.addEventListener("click", function go() {
@@ -705,7 +725,7 @@
         .concat(SHARED_SCRIPTS);
       var urls = [];
       var ui = JSDELIVR + "group-ui@" + siteInfo.ui + "/";
-      ["js/hub.js", "js/status.js", "css/status.css", "css/hub.css"].forEach(function add(file) {
+      ["js/hub.js", "js/status.js", "css/status.css", "js/addbook.js", "css/addbook.css", "css/hub.css"].forEach(function add(file) {
         urls.push(ui + file);
       });
       var tags = [QUIZ_TEMPLATE_TAG];
@@ -892,7 +912,8 @@
           (going ? " · " + going + " in progress" : "") :
         shown.length + " of " + books.length + " books";
       listBox.textContent = "";
-      if (!shown.length) {
+      var extras = adminExtras();
+      if (!shown.length && !extras.length) {
         var empty = make("div", "empty");
         empty.appendChild(make("p", null, books.length ? "No books match." : "No books yet."));
         if (books.length) {
@@ -916,7 +937,21 @@
       shown.forEach(function add(book) {
         list.appendChild(build(book));
       });
+      extras.forEach(function add(item) { list.appendChild(item); });
       listBox.appendChild(list);
+    }
+
+    /**
+     * The admin's extra shelf items while Admin mode is on: the books being
+     * built (not on the shelf yet) and the "Add book" tile.
+     * @returns {HTMLElement[]}
+     */
+    function adminExtras() {
+      var tools = window.SubjectAddBook;
+      if (!(adminMode && adminCtx && tools && tools.ready())) { return []; }
+      var items = tools.pending().map(tools.pendingCard);
+      items.push(tools.tile());
+      return items;
     }
 
     /** Draw the sort chips first, then (scrolling right) the filters. */
@@ -1024,6 +1059,17 @@
         workflowUrl: subject.admin && subject.admin.workflowUrl,
         onChange: function again() { draw(); },
         bookLink: bookAddress,
+        /* Add a book: this site's own subject name (its repo, when the site
+           is a GitHub Pages project site), the private pipeline repo, and
+           whether a book is already on the shelf. */
+        subjectRepo: (location.pathname.split("/")[1] || "").toLowerCase(),
+        pipeline: subject.admin && subject.admin.pipeline,
+        isPublished: function published(slug) {
+          return books.some(function same(book) {
+            return book.id === slug || (window.SubjectAddBook &&
+              window.SubjectAddBook.slugOf(book.title) === slug);
+          });
+        },
       };
       status.hidden = true;
       shelf.hidden = false;
