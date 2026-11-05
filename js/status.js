@@ -374,8 +374,9 @@
 
   /** @returns {string} the link that opens a book's reader or quiz */
   function readerLink(book, stage) {
-    return encodeURIComponent(book.folder) + "/index.html?view=" +
-      (stage && stage.key === "quiz" ? "quiz" : "read");
+    var view = stage && stage.key === "quiz" ? "quiz" : "read";
+    return options.bookLink ? options.bookLink(book, view) :
+      encodeURIComponent(book.folder) + "/index.html?view=" + view;
   }
 
   /** @returns {HTMLElement} one stage card of the full page */
