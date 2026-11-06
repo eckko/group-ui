@@ -140,7 +140,7 @@
     var adminCtx = null;               // {user, db, fs} once known to be an admin
     var adminMode = loadAdminMode();   // the admin's own switch in the gear
     var adminSetup = {};               // passed to js/status.js
-    var siteInfo = { ui: "", template: "" };   // group-version and item-version (older sites: subject.json / boot.json)
+    var siteInfo = { ui: "", template: "" };   // .grouprc and .itemrc (older sites: subject.json / boot.json)
     var adminError = "";
     var versions = null;               // what the CDN reports (cached for the gear)
     var gearPanel = null;
@@ -1267,7 +1267,7 @@
 
   /**
    * One line of text from a file next to the page.
-   * @param {string} name  "item-version" or "group-version"
+   * @param {string} name  ".itemrc" or ".grouprc"
    * @returns {Promise<string>} the first line, or "" when there is no such file
    */
   function readVersionFile(name) {
@@ -1285,7 +1285,7 @@
    * @returns {Promise<{pool: boolean, subject: object}>}
    */
   function withVersionFiles(found) {
-    return Promise.all([readVersionFile("item-version"), readVersionFile("group-version")])
+    return Promise.all([readVersionFile(".itemrc"), readVersionFile(".grouprc")])
       .then(function merge(values) {
         if (values[0]) { found.subject.templateTag = values[0]; }
         if (values[1]) { found.subject.uiVersion = values[1]; }

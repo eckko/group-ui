@@ -126,3 +126,23 @@ jobs:
             echo "- Commit: \`$SHA\` - $SUBJECT"
             echo "- Release: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$NEW"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tell the template repos about the release
+        env:
+          NEW: ${{ steps.version.outputs.new }}
+          TOKEN: ${{ secrets.TEMPLATE_UPDATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The template repos (group-template) have a workflow that opens a
+          # pull request with the new version in their `.grouprc`. Needs the
+          # secret TEMPLATE_UPDATE_TOKEN: a fine-grained token with
+          # Contents: read and write on those repos (it sends the event).
+          if [ -z "$TOKEN" ]; then
+            echo "::notice::TEMPLATE_UPDATE_TOKEN is not set; the template repos were not told about $NEW."
+            exit 0
+          fi
+          for repo in group-template; do
+            GH_TOKEN="$TOKEN" gh api -X POST "repos/$GITHUB_REPOSITORY_OWNER/$repo/dispatches" \
+              -f event_type=group-ui-release -f "client_payload[version]=$NEW"
+            echo "- told \`$repo\` about $NEW" >> "$GITHUB_STEP_SUMMARY"
+          done
