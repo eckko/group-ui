@@ -650,6 +650,11 @@
            when it cannot load. */
         addScript(base + "js/addbook.js").then(function add() {
           return window.SubjectAddBook.init(adminCtx, adminSetup);
+        }).then(function update() {
+          /* "Update a book" builds on the Add book module */
+          return addScript(base + "js/updatebook.js").then(function init() {
+            window.SubjectUpdateBook.init(adminSetup);
+          }).catch(function skip() { /* no Update book this time */ });
         }).then(draw).catch(function skip() { /* no Add book this time */ });
         return addScript(base + "js/status.js");
       }).then(function ready() {
@@ -738,7 +743,7 @@
         .concat(SHARED_SCRIPTS);
       var urls = [];
       var ui = JSDELIVR + "group-ui@" + siteInfo.ui + "/";
-      ["js/hub.js", "js/status.js", "css/status.css", "js/addbook.js", "css/addbook.css", "css/hub.css"].forEach(function add(file) {
+      ["js/hub.js", "js/status.js", "css/status.css", "js/addbook.js", "js/updatebook.js", "css/addbook.css", "css/hub.css"].forEach(function add(file) {
         urls.push(ui + file);
       });
       var tags = [QUIZ_TEMPLATE_TAG];
@@ -880,6 +885,9 @@
       if (adminOn()) {
         item.classList.add("has-status");
         item.appendChild(window.SubjectStatus.band(book));
+        if (window.SubjectUpdateBook && window.SubjectUpdateBook.ready()) {
+          item.appendChild(window.SubjectUpdateBook.bar(book));
+        }
       }
       return item;
     }

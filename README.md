@@ -275,3 +275,32 @@ Books being built are kept in the same Firestore document and shown as
 "Not published yet" cards for the admin only until the book appears on the
 shelf. There is no undo. Backward compatible with 3.0.x: sites that are not in
 admin mode never load the new files. Tests: `node --test tests/addbook.test.js`.
+
+## Update a book (admin only)
+
+With Admin mode on, every card has the lavender status panel (the whole panel
+opens the build status) and, under it, a thin arrow bar. The bar opens the
+Manage drawer: **Update this book** and **Open repo on GitHub**. The code is
+`js/updatebook.js`, loaded after `js/addbook.js`, which it borrows the dialog,
+the GitHub call and the pipeline runner from. It needs the same GitHub token
+as Add a book.
+
+Update this book can:
+
+- change the **book name** (the repo description), and with "Also rename the
+  repo" the repo name too (checked free first);
+- **replace the EPUB and/or PDF**: a file of the same type replaces the one in
+  `references/`, otherwise it is added;
+- **copy the shell repo's actions again**, shown as how many files differ from
+  `eckko/recall-quiz-book-shell` (book data is never compared);
+- **set the repo properties** Create book sets, in a collapsible panel: topics,
+  pull request settings, the two secrets and the variable. Secrets show only
+  "set" or "missing"; reading them needs admin access to the repo.
+
+Syncing the actions and setting the properties both run through the pipeline's
+`update-book.yml`, because secrets cannot be written from a browser. One click
+runs them together; there is no dry run here. Files and the rename are done
+first, so the pipeline gets the new repo name. The shelf title and the status
+record follow the repo only after the book publishes again, and renaming a repo
+leaves its old `bookStatus/<repo>` record behind. `tests/updatebook.test.js`
+checks the logic with a fake GitHub.

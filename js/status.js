@@ -293,15 +293,16 @@
     });
     segs.setAttribute("aria-hidden", "true");
     line.appendChild(segs);
-    var open = make("button", "st-open", "Status ›");
+    /* the whole band is the button: an empty one laid over it */
+    var open = make("button", "st-band-hit");
     open.type = "button";
     open.setAttribute("aria-label", "Status of " + book.title + ": " + info.headline.text);
     open.addEventListener("click", function go() { openPage(book, open); });
-    line.appendChild(open);
     box.appendChild(line);
     box.appendChild(make("span", "st-counts", info.known ?
       "Auto-checked " + info.autoDone + " of 4 · You verified " + info.manualDone + " of 4" :
       "The nightly check has not seen this book yet"));
+    box.appendChild(open);
     return box;
   }
 
