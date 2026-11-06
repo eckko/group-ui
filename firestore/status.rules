@@ -1,4 +1,4 @@
-// Firestore rules for the admin book status page (group-ui 3.0.0).
+// Firestore rules for the admin book status page and Add a book (group-ui).
 //
 // The Firebase project is shared with the quiz's progress sync, which already
 // has rules (item-ui: js/sync/providers/firebase-firestore.rules).
@@ -12,6 +12,9 @@
 //                         Nobody can write it; you create it by hand in the
 //                         console, once, with your user id (Authentication >
 //                         Users). An empty document is enough.
+//   adminSecrets/<uid>    the admin's own GitHub token and the books being built
+//                         ("Add a book"). Only that admin can read or write
+//                         it, and only while an admins/<uid> document exists.
 //   bookStatus/<repo>     only an admin can read it. An admin can change ONLY
 //                         the `signoffs` field of an existing document (the
 //                         "Mark verified" button). The `auto` facts are written
@@ -27,6 +30,11 @@ function isAdmin() {
 match /admins/{userId} {
   allow read: if request.auth != null && request.auth.uid == userId;
   allow write: if false;
+}
+
+match /adminSecrets/{userId} {
+  allow read, write: if request.auth != null && request.auth.uid == userId
+                     && isAdmin();
 }
 
 match /bookStatus/{repo} {
