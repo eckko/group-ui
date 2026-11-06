@@ -1,4 +1,4 @@
-name: Check subject site template
+name: Check site template
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: The files a subject shell loads exist
+      - name: The files a shell loads exist
         run: |
           for f in js/hub.js js/status.js js/addbook.js js/updatebook.js css/hub.css css/status.css css/addbook.css img/icon.svg img/apple-touch-icon.png; do
             test -s "$f" || { echo "::error::missing $f"; exit 1; }
