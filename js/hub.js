@@ -283,7 +283,7 @@
       var answered = 0;
       var last = 0;
       try {
-        var saved = JSON.parse(localStorage.getItem(PROGRESS_KEY + book.id) || "{}");
+        var saved = JSON.parse(localStorage.getItem(PROGRESS_KEY + bookName(book)) || "{}");
         Object.keys(saved.questions || {}).forEach(function each(id) {
           var record = saved.questions[id];
           if (record && record.timesSeen > 0) {
@@ -296,7 +296,7 @@
       }
       var opened = 0;
       try {
-        opened = Number(localStorage.getItem(OPENED_KEY + book.id)) || 0;
+        opened = Number(localStorage.getItem(OPENED_KEY + bookName(book))) || 0;
       } catch (problem) {
         opened = 0;
       }
@@ -341,6 +341,18 @@
     }
 
     /**
+     * The book's own name: what its repo, saved progress and status record
+     * are called. On a site with encrypted names the entry's "id" is a
+     * random address id and "repo" holds the name; on an older site "id"
+     * is the name.
+     * @param {object} book
+     * @returns {string}
+     */
+    function bookName(book) {
+      return book.repo || book.id;
+    }
+
+    /**
      * Where one of a book's own files is. On a site with encrypted names
      * the index lists it; on an older site it sits in the book's folder.
      * @param {object} book
@@ -365,7 +377,8 @@
      */
     function bookAddress(book, view) {
       if (book.files) {
-        return (view === "quiz" ? "q.html" : "r.html") + "?b=" +
+        // after "#": the browser never sends it, so no id reaches a server log
+        return (view === "quiz" ? "q.html" : "r.html") + "#b=" +
           encodeURIComponent(book.id);
       }
       return encodeURIComponent(book.folder) + "/index.html?view=" + view;
@@ -423,7 +436,7 @@
         action.href = bookAddress(book, view);
         action.addEventListener("click", function remember() {
           try {
-            localStorage.setItem(OPENED_KEY + book.id, String(Date.now()));
+            localStorage.setItem(OPENED_KEY + bookName(book), String(Date.now()));
           } catch (problem) {
             // not stored
           }
@@ -1046,12 +1059,12 @@
       }
       books = (index.books || []).map(function prepare(book, number) {
         return Object.assign({
-          folder: book.id,               // names the book's status record
+          folder: bookName(book),        // names the book's status record
           short: book.title.split(":")[0],
           colour: TILE_COLOURS[number % TILE_COLOURS.length],
           answered: 0, lastTouched: 0, questions: 0, ideas: 0, chapters: 0,
           summary: "", coverUrl: "",
-        }, book, (subject.bookDetails || {})[book.id] || {});
+        }, book, (subject.bookDetails || {})[bookName(book)] || {});
       });
       siteInfo = { ui: String(subject.uiVersion || ""), template: String(subject.templateTag || "") };
       adminSetup = {
@@ -1066,7 +1079,7 @@
         pipeline: subject.admin && subject.admin.pipeline,
         isPublished: function published(slug) {
           return books.some(function same(book) {
-            return book.id === slug || (window.SubjectAddBook &&
+            return bookName(book) === slug || (window.SubjectAddBook &&
               window.SubjectAddBook.slugOf(book.title) === slug);
           });
         },

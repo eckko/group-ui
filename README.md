@@ -63,9 +63,13 @@ before anyone has signed in:
 
 When `boot.json` exists the hub shows the sign-in screen with the neutral
 title "Books", and only after sign-in decrypts `index.enc` with the subject
-key: the title, `bookDetails`, and each book's id, title, views, cover and
-file map. A book opens as `r.html?b=<id>` (reader) or `q.html?b=<id>`
-(quiz). Without `boot.json` the hub reads `subject.json` and `books.json`
+key: the title, `bookDetails`, and each book's id, repo name, title, views,
+cover and file map. The `id` is random (20 hex characters, made once when the
+book is first published); `repo` is the book's own name, which still names its
+saved progress and its status record. A book opens as `r.html#b=<id>` (reader)
+or `q.html#b=<id>` (quiz). The id sits after the `#`, which a browser never
+sends, so no id or name reaches a server log. The page keeps it for the tab and
+removes it from the address; older `?b=<id>` links still work. Without `boot.json` the hub reads `subject.json` and `books.json`
 as before, so an older site keeps working unchanged.
 
 The shell's `index.html` (it never changes) has this loader at the end of
