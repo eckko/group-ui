@@ -24,7 +24,7 @@ jobs:
           node --check js/addbook.js
           node --check js/updatebook.js
       - name: status logic tests
-        run: node --test tests/status.test.js tests/addbook.test.js tests/updatebook.test.js
+        run: node --test tests/status.test.js tests/addbook.test.js tests/updatebook.test.js tests/hub.test.js
       - name: QUIZ_TEMPLATE_TAG is an exact tag
         run: |
           tag="$(sed -n 's/.*var QUIZ_TEMPLATE_TAG = "\([^"]*\)".*/\1/p' js/hub.js)"
