@@ -7,7 +7,7 @@
  *
  * Where the data comes from (Firestore, one document per book repo):
  *   bookStatus/<book folder>
- *     auto      written by the book-pipeline "Check books" workflow: which
+ *     auto      written by the actions "Check books" workflow: which
  *               files exist and a hash of each (see tools/book_status.py there)
  *     signoffs  written here when the admin taps ✓ or ✗:
  *               { <stage>_<format>: { result ("ok"|"error", absent = ok), hash, basedOn, verifiedAt, verifiedBy } }
@@ -27,7 +27,7 @@
   var FORMATS = ["epub", "pdf", "docx"];
   var FORMAT_NAMES = { epub: "EPUB", pdf: "PDF", docx: "DOCX" };
   var DEFAULT_WORKFLOW =
-    "https://github.com/eckko/book-pipeline/actions/workflows/check-books.yml";
+    "https://github.com/eckko/actions/actions/workflows/check-books.yml";
 
   // ------------------------------------------------ the state (pure code)
 

@@ -4,7 +4,7 @@
  * Loaded on demand by js/hub.js when Admin mode is on (like js/status.js).
  * It does three things for the signed-in admin:
  *
- *   1. Starts the book-pipeline "Create book" action, so the new repo gets
+ *   1. Starts the actions "Create book" action, so the new repo gets
  *      exactly the properties that action gives every book repo: private,
  *      made from the book template, topics, secrets, variable and pull
  *      request settings. Nothing is set up twice, here or there.
@@ -39,7 +39,7 @@
   /**
    * The repo name the Create book action gives a book name: lower case,
    * accents dropped, apostrophes removed, anything else one "-".
-   * Must stay the same as the action in book-pipeline.
+   * Must stay the same as the action in actions.
    * @param {string} name  the book name
    * @returns {string} the slug, or "" when nothing is left
    */
@@ -107,7 +107,7 @@
    * @param {object} spec
    * @param {function(string, string, object=): Promise<{status: number, data: *}>} spec.api
    * @param {function(number): Promise} [spec.sleep]  pause (tests make it instant)
-   * @param {string} spec.pipeline  "owner/book-pipeline"
+   * @param {string} spec.pipeline  "owner/actions"
    * @param {string} spec.workflow  the workflow file, such as "create-book.yml"
    * @param {object} spec.inputs  the workflow's inputs
    * @param {string} spec.label  the workflow's name for messages, "Create book"
@@ -194,7 +194,7 @@
    * @param {function(File): Promise<string>} deps.readBase64  a file's content as base64
    * @param {function(number): Promise} [deps.sleep]  pause (tests make it instant)
    * @param {string} deps.owner  the account that owns the repos
-   * @param {string} deps.pipeline  "owner/book-pipeline"
+   * @param {string} deps.pipeline  "owner/actions"
    * @param {string} deps.name  the book name
    * @param {string} deps.subject  the subject site name
    * @param {object[]} deps.items  from planFiles
@@ -656,7 +656,7 @@
       api: api,
       readBase64: readBase64,
       owner: state.owner,
-      pipeline: options.pipeline || state.owner + "/book-pipeline",
+      pipeline: options.pipeline || state.owner + "/actions",
       name: state.name,
       subject: state.subject,
       items: state.items,

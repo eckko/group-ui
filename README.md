@@ -208,7 +208,7 @@ tags and files described above.
 ## Admin book status (3.0.0)
 
 An admin sees how far each book is: files, structure, notes and quiz, each with
-an **Auto-checked** part (the book-pipeline "Check books" workflow) and a
+an **Auto-checked** part (the actions "Check books" workflow) and a
 **You verified** part (your own sign-off in the reader). It is hidden from every
 other reader: nothing extra is downloaded for them.
 
@@ -235,7 +235,7 @@ other reader: nothing extra is downloaded for them.
   Nothing is stored as "stale": a sign-off whose hash differs from the current
   file's hash, or whose structure hash differs, is stale when read.
 - **Rules:** merge `firestore/status.rules` into the project's rules.
-- **Pipeline:** `eckko/book-pipeline`, workflow "Check books" (nightly, and by
+- **Pipeline:** `eckko/actions`, workflow "Check books" (nightly, and by
   hand). It needs the secret `FIREBASE_SERVICE_ACCOUNT`.
 - **Re-run checks** opens that workflow in GitHub; set `"admin": {"workflowUrl":
   "..."}` in `subject.json` to point it somewhere else.
@@ -268,7 +268,7 @@ Setup, once, by the owner:
   the dialog; it is stored in Firestore at `adminSecrets/<uid>`, readable only
   by that admin. Merge `firestore/status.rules` (it has the new `adminSecrets`
   rule).
-- **Pipeline repo.** Defaults to `<owner>/book-pipeline`; set
+- **Pipeline repo.** Defaults to `<owner>/actions`; set
   `"admin": {"pipeline": "owner/name"}` in `subject.json`/`boot.json` for another.
   Keep it **private**: workflow inputs (the book name) show in its runs.
 - **Subjects.** The chips come from repos with topic `subject`. The workflow's
@@ -295,7 +295,7 @@ Update this book can:
 - **replace the EPUB and/or PDF**: a file of the same type replaces the one in
   `references/`, otherwise it is added;
 - **copy the shell repo's actions again**, shown as how many files differ from
-  `eckko/recall-quiz-book-shell` (book data is never compared);
+  `eckko/item-template` (book data is never compared);
 - **set the repo properties** Create book sets, in a collapsible panel: topics,
   pull request settings, the two secrets and the variable. Secrets show only
   "set" or "missing"; reading them needs admin access to the repo.

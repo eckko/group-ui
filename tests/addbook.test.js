@@ -16,7 +16,7 @@ const { slugOf, planFiles, createBook } = sandbox.SubjectAddBook;
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 // The expected values were produced by the Create book action's own shell
-// code (book-pipeline/.github/workflows/create-book.yml) for the same names.
+// code (actions/.github/workflows/create-book.yml) for the same names.
 test("slugOf gives the same repo names as the Create book action", () => {
   const expected = {
     "Deep Work": "deep-work",
@@ -72,10 +72,10 @@ function fakeGithub(options = {}) {
     if (route === "/repos/me/deep-work") {
       return { status: options.exists ? 200 : 404, data: {} };
     }
-    if (route === "/repos/me/book-pipeline") {
+    if (route === "/repos/me/actions") {
       return { status: options.noPipeline ? 404 : 200, data: { default_branch: "main" } };
     }
-    if (route.startsWith("/repos/me/book-pipeline/actions/workflows/create-book.yml/runs")) {
+    if (route.startsWith("/repos/me/actions/actions/workflows/create-book.yml/runs")) {
       return { status: 200, data: { workflow_runs: state.runs } };
     }
     if (route.endsWith("/dispatches")) {
@@ -83,7 +83,7 @@ function fakeGithub(options = {}) {
       state.runs = [{ id: 2, status: "queued", html_url: "https://run/2" }, ...state.runs];
       return { status: 204, data: null };
     }
-    if (route === "/repos/me/book-pipeline/actions/runs/2") {
+    if (route === "/repos/me/actions/actions/runs/2") {
       polls += 1;
       const done = polls >= 2;
       return { status: 200, data: { id: 2, html_url: "https://run/2",
@@ -107,7 +107,7 @@ function run(fake, extra = {}) {
   const steps = [];
   const promise = createBook({
     api: fake.api, sleep: async () => {}, readBase64: async (f) => "b64:" + f.name,
-    owner: "me", pipeline: "me/book-pipeline", name: "Deep Work", subject: "emotion",
+    owner: "me", pipeline: "me/actions", name: "Deep Work", subject: "emotion",
     items: [{ file: file("a.epub"), path: "deep-work.epub" },
       { file: file("a.pdf"), path: "deep-work.pdf" }],
     onStep: (text) => steps.push(text), ...extra,
@@ -128,7 +128,7 @@ test("createBook starts the action with the name and subject, then uploads", asy
   assert.ok(steps.some((s) => /Uploading 2 of 2/.test(s)));
   // order: the repo is only touched after the action succeeded
   const firstPut = fake.calls.findIndex((c) => c[0] === "PUT");
-  const lastPoll = fake.calls.map((c) => c[1]).lastIndexOf("/repos/me/book-pipeline/actions/runs/2");
+  const lastPoll = fake.calls.map((c) => c[1]).lastIndexOf("/repos/me/actions/actions/runs/2");
   assert.ok(lastPoll < firstPut);
 });
 
@@ -136,7 +136,7 @@ test("createBook never calls a public repo or sends a name anywhere else", async
   const fake = fakeGithub();
   await run(fake).promise;
   for (const [, route, body] of fake.calls) {
-    assert.ok(/^\/repos\/me\/(book-pipeline|deep-work)/.test(route), route);
+    assert.ok(/^\/repos\/me\/(actions|deep-work)/.test(route), route);
     if (body && !route.includes("/contents/")) {
       assert.ok(!/me\/deep-work/.test(JSON.stringify(body)), route);
     }
@@ -157,7 +157,7 @@ test("an empty name stops before any call", async () => {
 
 test("a refused dispatch, a missing pipeline and a failed run are explained", async () => {
   await assert.rejects(run(fakeGithub({ refuse: true })).promise, /refused to start/);
-  await assert.rejects(run(fakeGithub({ noPipeline: true })).promise, /cannot see me\/book-pipeline/);
+  await assert.rejects(run(fakeGithub({ noPipeline: true })).promise, /cannot see me\/actions/);
   const failing = fakeGithub({ runFails: true });
   await assert.rejects(run(failing).promise, /ended with failure.*https:\/\/run\/2/);
   assert.ok(!failing.calls.some((c) => c[0] === "PUT"), "no upload after a failed run");

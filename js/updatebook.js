@@ -21,9 +21,9 @@
   "use strict";
 
   var WORKFLOW = "update-book.yml";
-  var SHELL = "eckko/recall-quiz-book-shell";
+  var SHELL = "eckko/item-template";
   var NO_CHANGE = "no change";
-  /* what Create book sets on a new repo (book-pipeline/create-book.yml) */
+  /* what Create book sets on a new repo (actions/create-book.yml) */
   var SECRETS = ["SUBJECT_REPO_TOKEN", "SUBJECT_KEY"];
   var VARIABLES = ["SUBJECT_REPO"];
   var SETTINGS = {

@@ -18,7 +18,7 @@
 //   bookStatus/<repo>     only an admin can read it. An admin can change ONLY
 //                         the `signoffs` field of an existing document (the
 //                         "Mark verified" button). The `auto` facts are written
-//                         by the book-pipeline workflow with a service account,
+//                         by the actions workflow with a service account,
 //                         which bypasses these rules, so nothing in a browser
 //                         can create, delete or fake them.
 
