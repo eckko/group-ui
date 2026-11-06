@@ -54,12 +54,17 @@ repo then holds only `index.html` (the loader below), `boot.json`,
 The item UI's `tools/site/build_pool.py` writes it (see that repo).
 
 `boot.json` replaces `subject.json` and holds only what the page needs
-before anyone has signed in:
+before anyone has signed in, the sign-in theme:
 
 ```json
-{ "templateTag": "3.4.0", "uiVersion": "3",
-  "theme": { "css": ".theme/gate.css", "icon": ".theme/icon.svg" } }
+{ "theme": { "css": ".theme/gate.css", "icon": ".theme/icon.svg" } }
 ```
+
+The two versions are one-line files next to it: `group-version` (this UI:
+`3` = newest 3.x.x, `3.1` or an exact `3.1.0`) and `item-version` (the exact
+`item-ui` tag; its tools check the site). They replace `uiVersion` and
+`templateTag`; the older loader (it reads `uiVersion` from `boot.json`) and a site that still has those in `boot.json` or `subject.json`
+keeps working, and the files win when both exist.
 
 When `boot.json` exists the hub shows the sign-in screen with the neutral
 title "Books", and only after sign-in decrypts `index.enc` with the subject
@@ -83,15 +88,13 @@ The shell's `index.html` (it never changes) has this loader at the end of
     var p = document.createElement("p"); p.textContent = text;
     document.body.appendChild(p);
   }
-  fetch("boot.json", { cache: "no-cache" }).then(function (r) {
-    return r.ok ? r : fetch("subject.json", { cache: "no-cache" });
-  }).then(function (r) {
-    if (!r.ok) { throw new Error("boot.json: HTTP " + r.status); }
-    return r.json();
-  }).then(function (subject) {
-    var v = String(subject.uiVersion || "");
+  fetch("group-version", { cache: "no-cache" }).then(function (r) {
+    if (!r.ok) { throw new Error("group-version: HTTP " + r.status); }
+    return r.text();
+  }).then(function (text) {
+    var v = text.split("\n")[0].trim();
     if (!/^[0-9]+(\.[0-9]+){0,2}$/.test(v)) {
-      throw new Error('boot.json needs "uiVersion" such as "2"');
+      throw new Error('group-version needs a version such as "3"');
     }
     var s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/gh/eckko/group-ui@" + v +
