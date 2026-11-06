@@ -54,12 +54,17 @@ repo then holds only `index.html` (the loader below), `boot.json`,
 The item UI's `tools/site/build_pool.py` writes it (see that repo).
 
 `boot.json` replaces `subject.json` and holds only what the page needs
-before anyone has signed in:
+before anyone has signed in, the sign-in theme:
 
 ```json
-{ "templateTag": "3.4.0", "uiVersion": "3",
-  "theme": { "css": ".theme/gate.css", "icon": ".theme/icon.svg" } }
+{ "theme": { "css": ".theme/gate.css", "icon": ".theme/icon.svg" } }
 ```
+
+The two versions are one-line files next to it: `.grouprc` (this UI:
+`3` = newest 3.x.x, `3.1` or an exact `3.1.0`) and `.itemrc` (the exact
+`item-ui` tag; its tools check the site). They replace `uiVersion` and
+`templateTag`; the older loader (it reads `uiVersion` from `boot.json`) and a site that still has those in `boot.json` or `subject.json`
+keeps working, and the files win when both exist.
 
 When `boot.json` exists the hub shows the sign-in screen with the neutral
 title "Books", and only after sign-in decrypts `index.enc` with the subject
@@ -83,15 +88,13 @@ The shell's `index.html` (it never changes) has this loader at the end of
     var p = document.createElement("p"); p.textContent = text;
     document.body.appendChild(p);
   }
-  fetch("boot.json", { cache: "no-cache" }).then(function (r) {
-    return r.ok ? r : fetch("subject.json", { cache: "no-cache" });
-  }).then(function (r) {
-    if (!r.ok) { throw new Error("boot.json: HTTP " + r.status); }
-    return r.json();
-  }).then(function (subject) {
-    var v = String(subject.uiVersion || "");
+  fetch(".grouprc", { cache: "no-cache" }).then(function (r) {
+    if (!r.ok) { throw new Error(".grouprc: HTTP " + r.status); }
+    return r.text();
+  }).then(function (text) {
+    var v = text.split("\n")[0].trim();
     if (!/^[0-9]+(\.[0-9]+){0,2}$/.test(v)) {
-      throw new Error('boot.json needs "uiVersion" such as "2"');
+      throw new Error('.grouprc needs a version such as "3"');
     }
     var s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/gh/eckko/group-ui@" + v +
@@ -205,7 +208,7 @@ tags and files described above.
 ## Admin book status (3.0.0)
 
 An admin sees how far each book is: files, structure, notes and quiz, each with
-an **Auto-checked** part (the book-pipeline "Check books" workflow) and a
+an **Auto-checked** part (the actions "Check books" workflow) and a
 **You verified** part (your own sign-off in the reader). It is hidden from every
 other reader: nothing extra is downloaded for them.
 
@@ -232,7 +235,7 @@ other reader: nothing extra is downloaded for them.
   Nothing is stored as "stale": a sign-off whose hash differs from the current
   file's hash, or whose structure hash differs, is stale when read.
 - **Rules:** merge `firestore/status.rules` into the project's rules.
-- **Pipeline:** `eckko/book-pipeline`, workflow "Check books" (nightly, and by
+- **Pipeline:** `eckko/actions`, workflow "Check books" (nightly, and by
   hand). It needs the secret `FIREBASE_SERVICE_ACCOUNT`.
 - **Re-run checks** opens that workflow in GitHub; set `"admin": {"workflowUrl":
   "..."}` in `subject.json` to point it somewhere else.
@@ -265,7 +268,7 @@ Setup, once, by the owner:
   the dialog; it is stored in Firestore at `adminSecrets/<uid>`, readable only
   by that admin. Merge `firestore/status.rules` (it has the new `adminSecrets`
   rule).
-- **Pipeline repo.** Defaults to `<owner>/book-pipeline`; set
+- **Pipeline repo.** Defaults to `<owner>/actions`; set
   `"admin": {"pipeline": "owner/name"}` in `subject.json`/`boot.json` for another.
   Keep it **private**: workflow inputs (the book name) show in its runs.
 - **Subjects.** The chips come from repos with topic `subject`. The workflow's
@@ -292,7 +295,7 @@ Update this book can:
 - **replace the EPUB and/or PDF**: a file of the same type replaces the one in
   `references/`, otherwise it is added;
 - **copy the shell repo's actions again**, shown as how many files differ from
-  `eckko/recall-quiz-book-shell` (book data is never compared);
+  `eckko/item-template` (book data is never compared);
 - **set the repo properties** Create book sets, in a collapsible panel: topics,
   pull request settings, the two secrets and the variable. Secrets show only
   "set" or "missing"; reading them needs admin access to the repo.

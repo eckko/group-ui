@@ -52,7 +52,7 @@ function fakeApi(log, options = {}) {
   return (method, url, body) => {
     log.push([method, url, body]);
     const reply = (status, data) => Promise.resolve({ status, data });
-    if (method === "GET" && url === "/repos/me/book-pipeline") return reply(200, { default_branch: "main" });
+    if (method === "GET" && url === "/repos/me/actions") return reply(200, { default_branch: "main" });
     if (method === "GET" && url.indexOf("/workflows/update-book.yml/runs") !== -1) {
       polls += 1;
       return reply(200, { workflow_runs: polls > 1 ? [{ id: 7, status: "completed", conclusion: options.conclusion || "success", html_url: "u" }] : [] });
@@ -66,7 +66,7 @@ function fakeApi(log, options = {}) {
 }
 const base = (log, extra) => Object.assign({
   api: fakeApi(log), readBase64: () => Promise.resolve("QQ=="), sleep: () => Promise.resolve(),
-  owner: "me", repo: "old-name", pipeline: "me/book-pipeline", subject: "habit",
+  owner: "me", repo: "old-name", pipeline: "me/actions", subject: "habit",
   newName: "", newSlug: "old-name", files: [], existing: [], sync: false, properties: false,
 }, extra);
 
@@ -80,7 +80,7 @@ test("updateBook replaces files, renames, then runs the pipeline with the new re
   const calls = log.map((c) => c[0] + " " + c[1].replace(/\?.*/, ""));
   assert.ok(calls.indexOf("PUT /repos/me/old-name/contents/references/old-name.epub") <
     calls.indexOf("PATCH /repos/me/old-name"));
-  assert.ok(calls.indexOf("PATCH /repos/me/old-name") < calls.indexOf("POST /repos/me/book-pipeline/actions/workflows/update-book.yml/dispatches"));
+  assert.ok(calls.indexOf("PATCH /repos/me/old-name") < calls.indexOf("POST /repos/me/actions/actions/workflows/update-book.yml/dispatches"));
   const put = log.filter((c) => c[0] === "PUT");
   assert.equal(put[0][2].sha, "S1");               // replaces the existing epub
   assert.equal(put[1][1].endsWith("references/old-name.pdf"), true); // new pdf

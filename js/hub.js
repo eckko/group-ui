@@ -140,7 +140,7 @@
     var adminCtx = null;               // {user, db, fs} once known to be an admin
     var adminMode = loadAdminMode();   // the admin's own switch in the gear
     var adminSetup = {};               // passed to js/status.js
-    var siteInfo = { ui: "", template: "" };   // uiVersion and templateTag of subject.json
+    var siteInfo = { ui: "", template: "" };   // .grouprc and .itemrc (older sites: subject.json / boot.json)
     var adminError = "";
     var versions = null;               // what the CDN reports (cached for the gear)
     var gearPanel = null;
@@ -1258,24 +1258,59 @@
    */
   function readSettings() {
     if (!settingsPromise) {
-      settingsPromise = fetch("boot.json", { cache: "no-cache" })
-        .then(function boot(reply) {
-          if (!reply.ok) { throw new Error("no boot.json"); }
-          return reply.json().then(function found(subject) {
-            return { pool: true, subject: subject };
-          });
-        }).catch(function older() {
-          return fetch("subject.json", { cache: "no-cache" })
-            .then(function ok(reply) {
-              return reply.ok ? reply.json() : {};
-            }).then(function legacy(subject) {
-              return { pool: false, subject: subject };
-            });
-        }).catch(function none() {
-          return { pool: false, subject: {} };
-        });
+      settingsPromise = readSettingFiles().then(function versioned(found) {
+        return withVersionFiles(found);
+      });
     }
     return settingsPromise;
+  }
+
+  /**
+   * One line of text from a file next to the page.
+   * @param {string} name  ".itemrc" or ".grouprc"
+   * @returns {Promise<string>} the first line, or "" when there is no such file
+   */
+  function readVersionFile(name) {
+    return fetch(name, { cache: "no-cache" }).then(function text(reply) {
+      return reply.ok ? reply.text() : "";
+    }).then(function first(body) {
+      return String(body).split("\n")[0].trim();
+    }).catch(function none() { return ""; });
+  }
+
+  /**
+   * The two version files win over versions kept in boot.json or
+   * subject.json (older sites).
+   * @param {{pool: boolean, subject: object}} found
+   * @returns {Promise<{pool: boolean, subject: object}>}
+   */
+  function withVersionFiles(found) {
+    return Promise.all([readVersionFile(".itemrc"), readVersionFile(".grouprc")])
+      .then(function merge(values) {
+        if (values[0]) { found.subject.templateTag = values[0]; }
+        if (values[1]) { found.subject.uiVersion = values[1]; }
+        return found;
+      });
+  }
+
+  /** @returns {Promise<{pool: boolean, subject: object}>} boot.json or subject.json */
+  function readSettingFiles() {
+    return fetch("boot.json", { cache: "no-cache" })
+      .then(function boot(reply) {
+        if (!reply.ok) { throw new Error("no boot.json"); }
+        return reply.json().then(function found(subject) {
+          return { pool: true, subject: subject };
+        });
+      }).catch(function older() {
+        return fetch("subject.json", { cache: "no-cache" })
+          .then(function ok(reply) {
+            return reply.ok ? reply.json() : {};
+          }).then(function legacy(subject) {
+            return { pool: false, subject: subject };
+          });
+      }).catch(function none() {
+        return { pool: false, subject: {} };
+      });
   }
 
   /**
