@@ -32,14 +32,16 @@ and the icons of a subject live in that subject's repo
 `subject.json` names the UI version:
 
 ```json
-{ "title": "Example", "templateTag": "3.2.4", "uiVersion": "3",
+{ "title": "Example", "templateTag": "1.0.0", "uiVersion": "1",
   "theme": { "css": ".theme/gate.css", "icon": ".theme/icon.svg",
              "appleTouchIcon": ".theme/apple-touch-icon.png" },
   "bookDetails": { "<book id>": { "authors": ["Name"], "edition": "2nd", "year": 2018 } } }
 ```
 
-- `title`: the heading. `templateTag`: the `item-ui` tag whose
-  tools check the site. `bookDetails`: optional (authors, edition, year).
+- `title`: the heading. `templateTag`: the exact `item-ui` tag whose
+  tools check the site and from which the hub loads its sign-in, gear and
+  themes (on a site with a `.itemrc` file, that file's tag is used; with
+  neither, the hub falls back to `QUIZ_TEMPLATE_TAG` in `js/hub.js`). `bookDetails`: optional (authors, edition, year).
 - `theme`: optional, see below.
 - `uiVersion`: `"2"` (newest 2.x.x), `"2.1"` (newest 2.1.x) or `"2.0.0"`
   (exactly that release). Use the major normally; pin an exact one to stop

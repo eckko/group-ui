@@ -7,7 +7,9 @@ colours and art, icons) lives in that subject's repo, named by `theme` in its
 `js/status.js` and `css/status.css` are the admin-only status view, loaded on demand by `js/hub.js`; `node --test tests/status.test.js` checks its logic. Never put a book, a key,
 a cover or any readable book text here. Keep `js/hub.js` plain ES5-style
 browser code (no build step, no modules); keep `QUIZ_TEMPLATE_TAG` an exact
-tag of eckko/item-ui (no `v`, never a branch). A released
+tag of eckko/item-ui that exists (no `v`, never a branch); it is only the
+default, because the hub loads the item UI at the site's own `.itemrc` tag
+(`node --test tests/hub.test.js`). A released
 tag is immutable: fix with a new tag. Minor and patch releases reach every
 subject site at once, so they must stay backward compatible; anything breaking
 is a new major (2.0.0). See README.md.

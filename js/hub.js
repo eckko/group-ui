@@ -38,11 +38,28 @@
   /* The subject's public settings, read once (see readSettings). */
   var settingsPromise = null;
 
-  /* The quiz template that provides sign-in, the gear and themes. */
-  var QUIZ_TEMPLATE_TAG = "3.2.4";
+  /* The item UI that provides sign-in, the gear and themes. A site names its
+     own exact tag in .itemrc; this one is used when it names none (or names
+     something that is not an exact tag). It must be a tag that exists. */
+  var QUIZ_TEMPLATE_TAG = "1.0.0";
   var JSDELIVR = "https://cdn.jsdelivr.net/gh/eckko/";
-  var QUIZ_CDN = "https://cdn.jsdelivr.net/gh/eckko/item-ui@" +
-    QUIZ_TEMPLATE_TAG + "/";
+
+  /**
+   * Which item UI tag a site loads: the exact tag in its .itemrc, else the
+   * default above.
+   * @param {object} settings  the subject's public settings (templateTag)
+   * @returns {string} an exact tag such as "1.0.0"
+   */
+  function itemTagOf(settings) {
+    var tag = String(settings && settings.templateTag || "").trim();
+    return /^[0-9]+\.[0-9]+\.[0-9]+$/.test(tag) ? tag : QUIZ_TEMPLATE_TAG;
+  }
+
+  /* Under node --test the file only hands out its helpers. */
+  if (typeof module === "object" && module.exports) {
+    module.exports = { itemTagOf: itemTagOf, DEFAULT_ITEM_TAG: QUIZ_TEMPLATE_TAG };
+    return;
+  }
 
   /* Where this file was loaded from (the same tag of this repo). */
   var script = document.currentScript;
@@ -92,9 +109,11 @@
   function showHub() {
     "use strict";
 
-    /* The quiz template (reading panel, sign-in, themes), by one exact tag
-       (never a branch). Change it here, in this repo, and release a new tag. */
-    var CDN = QUIZ_CDN;
+    /* The item UI (reading panel, sign-in, themes), by one exact tag (never a
+       branch): the site's .itemrc, which is read first (see tagReady below).
+       Until then it is the default tag. */
+    var itemTag = QUIZ_TEMPLATE_TAG;
+    var CDN = JSDELIVR + "item-ui@" + itemTag + "/";
     var UI_KEY = "recall-hub:ui";
     var ADMIN_KEY = "recall-hub:admin";
     /* Must equal FIREBASE_VERSION in the quiz template's js/unlock.js, so the
@@ -746,9 +765,7 @@
       ["js/hub.js", "js/status.js", "css/status.css", "js/addbook.js", "js/updatebook.js", "css/addbook.css", "css/hub.css"].forEach(function add(file) {
         urls.push(ui + file);
       });
-      var tags = [QUIZ_TEMPLATE_TAG];
-      if (siteInfo.template && tags.indexOf(siteInfo.template) === -1) { tags.push(siteInfo.template); }
-      tags.forEach(function each(tag) {
+      [itemTag].forEach(function each(tag) {
         quiz.forEach(function add(file) {
           urls.push(JSDELIVR + "item-ui@" + tag + "/" + file);
         });
@@ -865,7 +882,7 @@
         }).catch(function none() { return "unknown"; });
       };
       Promise.all([header(hubUrl), latest("group-ui", ui),
-        header(QUIZ_CDN + "js/unlock.js"), newest("item-ui"),
+        header(CDN + "js/unlock.js"), newest("item-ui"),
         newestRelease()]).then(function both(got) {
         var note = got[0] !== "unknown" && got[1] !== "unknown" && got[0] !== got[1] ?
           " (older copy cached, use Clear cache)" : "";
@@ -1114,8 +1131,12 @@
     });
     watcher.observe(document.body, { childList: true });
 
-    addStyle(CDN + "css/theme-defaults.css");
-    addStyle(CDN + "css/reading-panel.css");
+    /* Which item UI tag this site uses: its .itemrc. Nothing from the item UI
+       is requested before this is known. */
+    var tagReady = readSettings().then(function pickTag(found) {
+      itemTag = itemTagOf(found.subject);
+      CDN = JSDELIVR + "item-ui@" + itemTag + "/";
+    }).catch(function keepDefault() { /* the default tag stays */ });
     /* An older site names its title in the open; a site with encrypted
        names shows only "Books" until the reader has signed in. */
     readSettings().then(function early(found) {
@@ -1144,9 +1165,13 @@
       });
     }
     /* The gear works on the sign-in screen too; Sign out only after. */
-    var gearReady = setUpGear();
+    var gearReady = tagReady.then(function startGear() {
+      addStyle(CDN + "css/theme-defaults.css");
+      addStyle(CDN + "css/reading-panel.css");
+      return setUpGear();
+    });
     gearReady.catch(function ignore() { /* reported below */ });
-    addScript(CDN + "js/unlock.js")
+    tagReady.then(function loadUnlock() { return addScript(CDN + "js/unlock.js"); })
       .then(function unlock() { return window.SubjectUnlock.ready(); })
       .then(function signedIn(result) {
         key = result.key;
