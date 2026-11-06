@@ -97,6 +97,73 @@
 .ab-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .ab-actions .ab-button { min-height: 44px; font-size: 14px; flex-grow: 1; }
 
+/* Update a book: the thin arrow bar, the Manage drawer and the update dialog */
+.ub-bar {
+  display: flex; align-items: center; justify-content: center; width: 100%; height: 44px;
+  border: 0; border-top: 1px solid #dcd8f2; background: #e2def6; color: #3b4357; cursor: pointer;
+  padding: 0; font: inherit;
+}
+.ub-bar:hover { background: #d6d1f1; }
+.ub-bar:focus-visible { outline: 2px solid #2742d9; outline-offset: -2px; }
+.ub-backdrop {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(20, 24, 40, 0.45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.ub-sheet {
+  width: 100%; box-sizing: border-box; background: var(--bg, #fbf7ee); color: var(--ink, #1b2233);
+  border-radius: 24px 24px 0 0; padding: 12px 16px 28px; display: flex; flex-direction: column; gap: 6px;
+}
+.ub-grip { align-self: center; width: 40px; height: 4px; border-radius: 2px; background: #c9cedb; margin-bottom: 8px; }
+.ub-sheet-head { display: flex; align-items: center; gap: 12px; }
+.ub-sheet-head h2 { margin: 0; flex-grow: 1; font-size: 24px; line-height: 1.2; }
+.ub-row {
+  min-height: 64px; box-sizing: border-box; padding: 8px 14px; border-radius: 14px; background: #fff;
+  border: 1px solid #e0e3ec; display: flex; align-items: center; gap: 14px; text-decoration: none;
+  color: inherit; font: inherit; text-align: left; cursor: pointer; width: 100%;
+}
+.ub-row-icon {
+  width: 40px; height: 40px; border-radius: 12px; background: #e4e8ff; color: #2742d9; flex: none;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.ub-row-text { flex-grow: 1; display: flex; flex-direction: column; gap: 2px; }
+.ub-row-title { font-size: 16px; font-weight: 600; flex-grow: 1; }
+.ub-row-sub { font-size: 13px; color: #5a6275; }
+.ub-card {
+  background: #fff; border: 1px solid #e0e3ec; border-radius: 16px; padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ub-card h3 { margin: 0; font-size: 16px; }
+.ub-columns { display: flex; flex-direction: column; gap: 14px; }
+.ub-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ub-check { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; cursor: pointer; }
+.ub-check input { width: 24px; height: 24px; margin: 8px 0 0; flex: none; }
+.ub-check-text { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; }
+.ub-check-label { font-size: 15px; font-weight: 600; }
+.ub-props summary { font-size: 16px; font-weight: 700; cursor: pointer; min-height: 32px; }
+.ub-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ub-prop {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center;
+  min-height: 40px; border-top: 1px solid #eceae2; font-size: 13px;
+}
+.ub-prop-name { overflow-wrap: anywhere; }
+.ub-prop-have { color: #5a6275; }
+@media (min-width: 700px) {
+  .ub-backdrop { align-items: center; }
+  .ub-sheet { width: 440px; border-radius: 20px; }
+  .ab-dialog.ab-wide { width: 860px; }
+  .ab-wide .ub-columns { flex-direction: row; align-items: flex-start; }
+  .ab-wide .ub-col { flex: 1 1 0; }
+}
+@media (prefers-color-scheme: dark) {
+  .ub-bar { background: #2d2a48; border-top-color: #3b3860; color: #cfd5ea; }
+  .ub-bar:hover { background: #36335a; }
+  .ub-sheet { background: var(--bg, #1c2030); color: var(--ink, #eceff8); }
+  .ub-row, .ub-card { background: #262b3f; border-color: #3b4260; color: #eceff8; }
+  .ub-row-icon { background: #33395c; color: #aab8ff; }
+  .ub-row-sub, .ub-prop-have { color: #aab2cc; }
+  .ub-prop { border-top-color: #3b4260; }
+}
+
 @media (min-width: 700px) {
   .ab-backdrop { align-items: center; }
   .ab-dialog { width: 560px; border-radius: 20px; padding: 0 28px 28px; max-height: 92vh; }

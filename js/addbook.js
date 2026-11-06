@@ -102,53 +102,45 @@
   }
 
   /**
-   * Create a book: start the action, wait for it, upload the files.
-   * @param {object} deps
-   * @param {function(string, string, object=): Promise<{status: number, data: *}>} deps.api
-   *   a GitHub call: (method, path, body) -> status and parsed JSON
-   * @param {function(File): Promise<string>} deps.readBase64  a file's content as base64
-   * @param {function(number): Promise} [deps.sleep]  pause (tests make it instant)
-   * @param {string} deps.owner  the account that owns the repos
-   * @param {string} deps.pipeline  "owner/book-pipeline"
-   * @param {string} deps.name  the book name
-   * @param {string} deps.subject  the subject site name
-   * @param {object[]} deps.items  from planFiles
-   * @param {function(string): void} [deps.onStep]  progress text
-   * @returns {Promise<{slug: string, runUrl: string}>}
+   * Start a workflow of the private pipeline repo and wait until the run
+   * that click started is over. Shared by "Add a book" and "Update a book".
+   * @param {object} spec
+   * @param {function(string, string, object=): Promise<{status: number, data: *}>} spec.api
+   * @param {function(number): Promise} [spec.sleep]  pause (tests make it instant)
+   * @param {string} spec.pipeline  "owner/book-pipeline"
+   * @param {string} spec.workflow  the workflow file, such as "create-book.yml"
+   * @param {object} spec.inputs  the workflow's inputs
+   * @param {string} spec.label  the workflow's name for messages, "Create book"
+   * @param {string} spec.running  progress text while it runs
+   * @param {function(string): void} [spec.onStep]
+   * @returns {Promise<object>} the finished (successful) run
    */
-  function createBook(deps) {
-    var api = deps.api;
-    var sleep = deps.sleep || wait;
-    var step = deps.onStep || function none() {};
-    var slug = slugOf(deps.name);
-    var pipeline = deps.pipeline;
-    var runsPath = "/repos/" + pipeline + "/actions/workflows/" + WORKFLOW + "/runs" +
+  function runWorkflow(spec) {
+    var api = spec.api;
+    var sleep = spec.sleep || wait;
+    var step = spec.onStep || function none() {};
+    var pipeline = spec.pipeline;
+    var runsPath = "/repos/" + pipeline + "/actions/workflows/" + spec.workflow + "/runs" +
       "?event=workflow_dispatch&per_page=10";
     var before = {};
     var run = null;
+    var branch = "";
 
     function fail(message) { throw new Error(message); }
 
-    return Promise.resolve().then(function check() {
-      if (!slug) { fail("That name leaves no letters or digits for a repo name."); }
-      return api("GET", "/repos/" + deps.owner + "/" + slug);
-    }).then(function free(reply) {
-      if (reply.status !== 404) { fail("A repo called " + slug + " already exists."); }
-      return api("GET", "/repos/" + pipeline);
-    }).then(function pipelineRepo(reply) {
+    return api("GET", "/repos/" + pipeline).then(function pipelineRepo(reply) {
       if (reply.status !== 200) {
         fail("The token cannot see " + pipeline + " (needs Actions: read and write).");
       }
-      deps.branch = reply.data.default_branch;
+      branch = reply.data.default_branch;
       return api("GET", runsPath);
     }).then(function known(reply) {
       ((reply.data && reply.data.workflow_runs) || []).forEach(function each(item) {
         before[item.id] = true;
       });
-      step("Starting the Create book action");
-      return api("POST", "/repos/" + pipeline + "/actions/workflows/" + WORKFLOW +
-        "/dispatches", { ref: deps.branch,
-          inputs: { book_name: deps.name, subject: deps.subject } });
+      step("Starting the " + spec.label + " action");
+      return api("POST", "/repos/" + pipeline + "/actions/workflows/" + spec.workflow +
+        "/dispatches", { ref: branch, inputs: spec.inputs });
     }).then(function started(reply) {
       if (reply.status !== 204) {
         fail("GitHub refused to start the action (" + reply.status + "). " +
@@ -157,10 +149,8 @@
       return findRun(0);
     }).then(function followed() {
       return followRun(0);
-    }).then(function created() {
-      return uploadAll(0);
     }).then(function done() {
-      return { slug: slug, runUrl: run && run.html_url };
+      return run;
     });
 
     /** Find the run this click started: the newest one we had not seen. */
@@ -181,12 +171,12 @@
     function followRun(attempt) {
       if (run.status === "completed") {
         if (run.conclusion !== "success") {
-          fail("The Create book action ended with " + run.conclusion + ". Open it: " + run.html_url);
+          fail("The " + spec.label + " action ended with " + run.conclusion + ". Open it: " + run.html_url);
         }
         return null;
       }
       if (attempt >= 100) { fail("The action is taking too long. Open it: " + run.html_url); }
-      step("Creating the repo and its settings");
+      step(spec.running);
       return sleep(3000).then(function poll() {
         return api("GET", "/repos/" + pipeline + "/actions/runs/" + run.id);
       }).then(function now(reply) {
@@ -194,6 +184,48 @@
         return followRun(attempt + 1);
       });
     }
+  }
+
+  /**
+   * Create a book: start the action, wait for it, upload the files.
+   * @param {object} deps
+   * @param {function(string, string, object=): Promise<{status: number, data: *}>} deps.api
+   *   a GitHub call: (method, path, body) -> status and parsed JSON
+   * @param {function(File): Promise<string>} deps.readBase64  a file's content as base64
+   * @param {function(number): Promise} [deps.sleep]  pause (tests make it instant)
+   * @param {string} deps.owner  the account that owns the repos
+   * @param {string} deps.pipeline  "owner/book-pipeline"
+   * @param {string} deps.name  the book name
+   * @param {string} deps.subject  the subject site name
+   * @param {object[]} deps.items  from planFiles
+   * @param {function(string): void} [deps.onStep]  progress text
+   * @returns {Promise<{slug: string, runUrl: string}>}
+   */
+  function createBook(deps) {
+    var api = deps.api;
+    var sleep = deps.sleep || wait;
+    var step = deps.onStep || function none() {};
+    var slug = slugOf(deps.name);
+    var run = null;
+
+    function fail(message) { throw new Error(message); }
+
+    return Promise.resolve().then(function check() {
+      if (!slug) { fail("That name leaves no letters or digits for a repo name."); }
+      return api("GET", "/repos/" + deps.owner + "/" + slug);
+    }).then(function free(reply) {
+      if (reply.status !== 404) { fail("A repo called " + slug + " already exists."); }
+      return runWorkflow({
+        api: api, sleep: sleep, pipeline: deps.pipeline, workflow: WORKFLOW,
+        inputs: { book_name: deps.name, subject: deps.subject },
+        label: "Create book", running: "Creating the repo and its settings", onStep: step,
+      });
+    }).then(function created(finished) {
+      run = finished;
+      return uploadAll(0);
+    }).then(function done() {
+      return { slug: slug, runUrl: run && run.html_url };
+    });
 
     /** Upload the files one after the other (parallel commits collide). */
     function uploadAll(index) {
@@ -308,6 +340,8 @@
 
   var dialog = null;
   var lastFocus = null;
+  var dialogName = "Add a book";          // heading and label of the dialog; Update a book changes it
+  var wideDialog = false;                 // a two-column dialog on a wide screen
 
   /** Close the dialog and give the focus back. */
   function close() {
@@ -336,10 +370,10 @@
       document.addEventListener("keydown", onKey);
     }
     dialog.textContent = "";
-    var box = make("div", "ab-dialog");
+    var box = make("div", "ab-dialog" + (wideDialog ? " ab-wide" : ""));
     box.setAttribute("role", "dialog");
     box.setAttribute("aria-modal", "true");
-    box.setAttribute("aria-label", "Add a book");
+    box.setAttribute("aria-label", dialogName);
     var head = make("div", "ab-head");
     var closer = make("button", "ab-close", "×");
     closer.type = "button";
@@ -377,11 +411,11 @@
 
   /** Screen: paste the GitHub token once. */
   function tokenScreen(next) {
-    var body = screen("Add a book", "", -1);
+    var body = screen(dialogName, "", -1);
     var warning = make("div", "ab-note ab-warn");
     warning.appendChild(make("strong", null, "GitHub is not connected"));
-    warning.appendChild(make("p", null, "Adding a book needs permission to create repos, start " +
-      "the Create book action and push files. Add a token once; it is kept on your account only."));
+    warning.appendChild(make("p", null, "This needs permission to create and change repos, start " +
+      "the pipeline actions and push files. Add a token once; it is kept on your account only."));
     body.appendChild(warning);
     var label = make("label", "ab-label", "GitHub token");
     label.setAttribute("for", "ab-token");
@@ -664,18 +698,30 @@
    * @returns {Promise} resolves once the first screen is shown
    */
   function open() {
-    var token = saved.githubToken;
+    dialogName = "Add a book";
+    wideDialog = false;
     var state = { files: [] };
-    /** Find out who the token belongs to, then start. */
+    return withGithub(function ready(api, owner) {
+      state.owner = owner;
+      return nameScreen(state, api);
+    });
+  }
+
+  /**
+   * Run next(api, owner) once there is a working GitHub token: the saved one,
+   * or after the admin pastes one (the token screen).
+   * @param {function(function, string): *} next
+   * @returns {Promise}
+   */
+  function withGithub(next) {
     function start() {
       var api = githubWith(saved.githubToken);
       return api("GET", "/user").then(function who(reply) {
         if (reply.status !== 200) { saved.githubToken = ""; return tokenScreen(start); }
-        state.owner = reply.data.login;
-        return nameScreen(state, api);
+        return next(api, reply.data.login);
       });
     }
-    return token ? start() : Promise.resolve(tokenScreen(start));
+    return saved.githubToken ? start() : Promise.resolve(tokenScreen(start));
   }
 
   /** @returns {object[]} the books being built, newest first */
@@ -740,5 +786,15 @@
     init: init, open: open, tile: tile, pending: pending, pendingCard: pendingCard,
     ready: function ready() { return !!ctx; },
     slugOf: slugOf, planFiles: planFiles, createBook: createBook,
+    runWorkflow: runWorkflow,
+    /* what js/updatebook.js builds its screens from */
+    kit: {
+      make: make, button: button, screen: screen, close: close,
+      githubWith: githubWith, withGithub: withGithub, readBase64: readBase64,
+      options: function currentOptions() { return options; },
+      ctx: function currentCtx() { return ctx; },
+      use: function use(name, wide) { dialogName = name; wideDialog = !!wide; },
+      extensionOf: extensionOf,
+    },
   };
 }(typeof window !== "undefined" ? window : this));
