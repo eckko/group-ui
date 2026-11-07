@@ -13,8 +13,11 @@
  *   3. Remembers the book as "being built" until it shows up on the shelf.
  *
  * Everything runs in the admin's browser with the admin's own GitHub token,
- * which sits in Firestore at adminSecrets/<uid> where only that admin can
- * read it (firestore/status.rules). The book name and the files go only to
+ * which sits in Firestore where only that admin can read it
+ * (firestore/status.rules): in the field `pat` of the admin's own document
+ * admins/<uid> (put there by hand in the Firebase console, so no page can
+ * write it), or else in adminSecrets/<uid>, where the token pasted into the
+ * token screen is saved. The book name and the files go only to
  * GitHub's API and to the private repos: no workflow of a public repo is
  * started, so nothing about the book reaches a public log.
  *
@@ -29,10 +32,13 @@
   var EXTENSIONS = ["epub", "pdf", "docx"];
   var MAX_BYTES = 90 * 1024 * 1024;      // the Contents API stops at 100 MB
   var SECRETS = "adminSecrets";
+  var ADMINS = "admins";
+  var ADMIN_TOKEN_FIELD = "pat";         // field of admins/<uid> that holds the token
 
   var ctx = null;                        // {user, db, fs} from hub.js
   var options = {};                      // from hub.js (see init)
   var saved = { githubToken: "", pending: [] };
+  var adminToken = "";                   // from admins/<uid>.pat; only in memory, never copied or written
 
   // ------------------------------------------------------------- pure logic
 
@@ -316,9 +322,25 @@
     return ctx.fs.doc(ctx.db, SECRETS, ctx.user.uid);
   }
 
+  /**
+   * Read the token set by hand in admins/<uid> (field "pat"). A missing
+   * document, field or permission just means "no token there".
+   * @returns {Promise<string>} the token, or ""
+   */
+  function loadAdminToken() {
+    var ref = ctx.fs.doc(ctx.db, ADMINS, ctx.user.uid);
+    return ctx.fs.getDoc(ref).then(function got(snapshot) {
+      var data = snapshot.exists() ? snapshot.data() : {};
+      var value = data[ADMIN_TOKEN_FIELD];
+      return typeof value === "string" ? value.trim() : "";
+    }).catch(function none() { return ""; });
+  }
+
   /** Read the saved token and the books being built. */
   function load() {
-    return ctx.fs.getDoc(secretsRef()).then(function got(snapshot) {
+    return Promise.all([ctx.fs.getDoc(secretsRef()), loadAdminToken()]).then(function got(both) {
+      var snapshot = both[0];
+      adminToken = both[1];
       var data = snapshot.exists() ? snapshot.data() : {};
       saved = { githubToken: data.githubToken || "", pending: data.pending || [] };
       var published = options.isPublished || function no() { return false; };
@@ -715,13 +737,17 @@
    */
   function withGithub(next) {
     function start() {
-      var api = githubWith(saved.githubToken);
+      var api = githubWith(saved.githubToken || adminToken);
       return api("GET", "/user").then(function who(reply) {
-        if (reply.status !== 200) { saved.githubToken = ""; return tokenScreen(start); }
+        if (reply.status !== 200) {
+          saved.githubToken = "";
+          adminToken = "";               // refused by GitHub: ask for a new one
+          return tokenScreen(start);
+        }
         return next(api, reply.data.login);
       });
     }
-    return saved.githubToken ? start() : Promise.resolve(tokenScreen(start));
+    return (saved.githubToken || adminToken) ? start() : Promise.resolve(tokenScreen(start));
   }
 
   /** @returns {object[]} the books being built, newest first */
