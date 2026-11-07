@@ -266,10 +266,16 @@ It takes a book name, a subject and EPUB, PDF or DOCX files, then:
 Setup, once, by the owner:
 
 - **Token.** A fine-grained GitHub token for your repos with Administration,
-  Contents, Actions (read and write) and Metadata (read). The admin pastes it in
-  the dialog; it is stored in Firestore at `adminSecrets/<uid>`, readable only
-  by that admin. Merge `firestore/status.rules` (it has the new `adminSecrets`
-  rule).
+  Contents, Actions (read and write) and Metadata (read). Two ways to give it to
+  the page, both readable only by that admin:
+  - **Set by hand (no prompt, ever):** in the Firebase console, add the field
+    `pat` (a string, the token) to your own `admins/<uid>` document. The page
+    reads it and never writes it, copies it or shows it; if GitHub refuses it the
+    dialog asks for a new one.
+  - **Paste it in the dialog:** it is then stored in `adminSecrets/<uid>`.
+  If both exist, the pasted one (`adminSecrets`) wins. Merge
+  `firestore/status.rules` (it has the `adminSecrets` rule; `admins/<uid>` is
+  already readable by its own user and writable by nobody).
 - **Pipeline repo.** Defaults to `<owner>/actions`; set
   `"admin": {"pipeline": "owner/name"}` in `subject.json`/`boot.json` for another.
   Keep it **private**: workflow inputs (the book name) show in its runs.

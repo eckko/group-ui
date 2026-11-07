@@ -11,7 +11,10 @@
 //                         (that is how the page learns "I am an admin").
 //                         Nobody can write it; you create it by hand in the
 //                         console, once, with your user id (Authentication >
-//                         Users). An empty document is enough.
+//                         Users). An empty document is enough. It may also hold
+//                         the field `pat`, the admin's GitHub token for "Add a
+//                         book", set by hand in the console (the page only reads
+//                         it; the rule below keeps it unwritable from a browser).
 //   adminSecrets/<uid>    the admin's own GitHub token and the books being built
 //                         ("Add a book"). Only that admin can read or write
 //                         it, and only while an admins/<uid> document exists.
