@@ -39,6 +39,7 @@
   var options = {};                      // from hub.js (see init)
   var saved = { githubToken: "", pending: [] };
   var adminToken = "";                   // from admins/<uid>.pat; only in memory, never copied or written
+  var tokenProblem = "";                 // why no token was used (shown on the token screen; never the token)
 
   // ------------------------------------------------------------- pure logic
 
@@ -330,10 +331,26 @@
   function loadAdminToken() {
     var ref = ctx.fs.doc(ctx.db, ADMINS, ctx.user.uid);
     return ctx.fs.getDoc(ref).then(function got(snapshot) {
-      var data = snapshot.exists() ? snapshot.data() : {};
+      if (!snapshot.exists()) {
+        tokenProblem = "There is no admins/" + ctx.user.uid + " document.";
+        return "";
+      }
+      var data = snapshot.data();
       var value = data[ADMIN_TOKEN_FIELD];
-      return typeof value === "string" ? value.trim() : "";
-    }).catch(function none() { return ""; });
+      if (typeof value !== "string") {
+        tokenProblem = value === undefined
+          ? 'The admins document has no field named "' + ADMIN_TOKEN_FIELD + '" (fields: ' +
+            (Object.keys(data).join(", ") || "none") + ")."
+          : 'The field "' + ADMIN_TOKEN_FIELD + '" must be a string, not ' + typeof value + ".";
+        return "";
+      }
+      value = value.trim().replace(/^["']|["']$/g, "");
+      if (!value) { tokenProblem = 'The field "' + ADMIN_TOKEN_FIELD + '" is empty.'; }
+      return value;
+    }).catch(function none(problem) {
+      tokenProblem = "Could not read admins/<uid>: " + (problem && (problem.code || problem.message) || "unknown error") + ".";
+      return "";
+    });
   }
 
   /** Read the saved token and the books being built. */
@@ -436,6 +453,7 @@
     var body = screen(dialogName, "", -1);
     var warning = make("div", "ab-note ab-warn");
     warning.appendChild(make("strong", null, "GitHub is not connected"));
+    if (tokenProblem) { warning.appendChild(make("p", null, tokenProblem)); }
     warning.appendChild(make("p", null, "This needs permission to create and change repos, start " +
       "the pipeline actions and push files. Add a token once; it is kept on your account only."));
     body.appendChild(warning);
@@ -738,13 +756,19 @@
   function withGithub(next) {
     function start() {
       var api = githubWith(saved.githubToken || adminToken);
+      var source = saved.githubToken ? "the saved token" : "the token in admins/<uid>";
       return api("GET", "/user").then(function who(reply) {
         if (reply.status !== 200) {
+          tokenProblem = "GitHub refused " + source + " (HTTP " + reply.status +
+            (reply.data && reply.data.message ? ": " + reply.data.message : "") + ").";
           saved.githubToken = "";
           adminToken = "";               // refused by GitHub: ask for a new one
           return tokenScreen(start);
         }
         return next(api, reply.data.login);
+      }, function offline(problem) {
+        tokenProblem = "Could not reach GitHub (" + (problem && problem.message || "network error") + ").";
+        return tokenScreen(start);
       });
     }
     return (saved.githubToken || adminToken) ? start() : Promise.resolve(tokenScreen(start));
